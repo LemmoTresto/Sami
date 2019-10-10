@@ -31,6 +31,8 @@ use Sami\Renderer\TwigExtension;
 use Sami\Store\JsonStore;
 use Sami\Version\SingleVersionCollection;
 use Sami\Version\Version;
+use Twig_Environment;
+use Twig_Loader_Filesystem;
 
 class Sami extends Container
 {
@@ -159,7 +161,7 @@ class Sami extends Container
         };
 
         $this['twig'] = function () {
-            $twig = new \Twig_Environment(new \Twig_Loader_Filesystem(array('/')), array(
+            $twig = new Twig_Environment(new Twig_Loader_Filesystem(array('/')), array(
                 'strict_variables' => true,
                 'debug' => true,
                 'auto_reload' => true,

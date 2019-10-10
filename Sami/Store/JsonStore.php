@@ -11,6 +11,8 @@
 
 namespace Sami\Store;
 
+use InvalidArgumentException;
+use RuntimeException;
 use Sami\Project;
 use Sami\Reflection\ClassReflection;
 use Symfony\Component\Filesystem\Filesystem;
@@ -21,14 +23,15 @@ class JsonStore implements StoreInterface
     const JSON_PRETTY_PRINT = 128;
 
     /**
+     * @param Project $project
+     * @param $name
      * @return ReflectionClass A ReflectionClass instance
      *
-     * @throws \InvalidArgumentException if the class does not exist in the store
      */
     public function readClass(Project $project, $name)
     {
         if (!file_exists($this->getFilename($project, $name))) {
-            throw new \InvalidArgumentException(sprintf('File "%s" for class "%s" does not exist.', $this->getFilename($project, $name), $name));
+            throw new InvalidArgumentException(sprintf('File "%s" for class "%s" does not exist.', $this->getFilename($project, $name), $name));
         }
 
         return ClassReflection::fromArray($project, json_decode(file_get_contents($this->getFilename($project, $name)), true));
@@ -37,7 +40,7 @@ class JsonStore implements StoreInterface
     public function removeClass(Project $project, $name)
     {
         if (!file_exists($this->getFilename($project, $name))) {
-            throw new \RuntimeException(sprintf('Unable to remove the "%s" class.', $name));
+            throw new RuntimeException(sprintf('Unable to remove the "%s" class.', $name));
         }
 
         unlink($this->getFilename($project, $name));

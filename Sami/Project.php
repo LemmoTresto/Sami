@@ -11,11 +11,13 @@
 
 namespace Sami;
 
+use InvalidArgumentException;
+use LogicException;
 use Sami\Parser\Parser;
 use Sami\Reflection\ClassReflection;
 use Sami\Reflection\LazyClassReflection;
-use Sami\Renderer\Renderer;
 use Sami\RemoteRepository\AbstractRemoteRepository;
+use Sami\Renderer\Renderer;
 use Sami\Store\StoreInterface;
 use Sami\Version\SingleVersionCollection;
 use Sami\Version\Version;
@@ -50,6 +52,8 @@ class Project
     protected $version;
     protected $filesystem;
 
+    private static $instance;
+
     public function __construct(StoreInterface $store, VersionCollection $versions = null, array $config = array())
     {
         if (null === $versions) {
@@ -69,7 +73,7 @@ class Project
         if (count($this->versions) > 1) {
             foreach (array('build_dir', 'cache_dir') as $dir) {
                 if (false === strpos($this->config[$dir], '%version%')) {
-                    throw new \LogicException(sprintf('The "%s" setting must have the "%%version%%" placeholder as the project has more than one version.', $dir));
+                    throw new LogicException(sprintf('The "%s" setting must have the "%%version%%" placeholder as the project has more than one version.', $dir));
                 }
             }
         }
@@ -316,7 +320,7 @@ class Project
         if ($this->getClass($name) instanceof LazyClassReflection) {
             try {
                 $this->addClass($this->store->readClass($this, $name));
-            } catch (\InvalidArgumentException $e) {
+            } catch (InvalidArgumentException $e) {
                 // probably a PHP built-in class
                 return;
             }
@@ -334,6 +338,12 @@ class Project
         $this->namespaceClasses = array();
         $this->namespaceInterfaces = array();
         $this->namespaceExceptions = array();
+        self::$instance = $this;
+    }
+
+    public static function getInstance()
+    {
+        return self::$instance;
     }
 
     public function read()
@@ -448,7 +458,7 @@ class Project
     protected function parseVersion(Version $version, $previous, $callback = null, $force = false)
     {
         if (null === $this->parser) {
-            throw new \LogicException('You must set a parser.');
+            throw new LogicException('You must set a parser.');
         }
 
         if ($version->isFrozen() && count($this->classes) > 0) {
@@ -473,7 +483,7 @@ class Project
     protected function renderVersion(Version $version, $previous, $callback = null, $force = false)
     {
         if (null === $this->renderer) {
-            throw new \LogicException('You must set a renderer.');
+            throw new LogicException('You must set a renderer.');
         }
 
         $frozen = $version->isFrozen() && $this->renderer->isRendered($this) && $this->version === file_get_contents($this->getBuildDir().'/PROJECT_VERSION');

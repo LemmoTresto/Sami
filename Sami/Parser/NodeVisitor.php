@@ -13,18 +13,19 @@ namespace Sami\Parser;
 
 use PhpParser\Node as AbstractNode;
 use PhpParser\Node\Name\FullyQualified;
-use PhpParser\NodeVisitorAbstract;
-use PhpParser\Node\Stmt\ClassConst as ClassConstNode;
-use PhpParser\Node\Stmt\ClassMethod as ClassMethodNode;
+use PhpParser\Node\NullableType;
 use PhpParser\Node\Stmt\Class_ as ClassNode;
+use PhpParser\Node\Stmt\ClassConst as ClassConstNode;
 use PhpParser\Node\Stmt\ClassLike as ClassLikeNode;
+use PhpParser\Node\Stmt\ClassMethod as ClassMethodNode;
+use PhpParser\Node\Stmt\Function_ as FunctionNode;
 use PhpParser\Node\Stmt\Interface_ as InterfaceNode;
 use PhpParser\Node\Stmt\Namespace_ as NamespaceNode;
 use PhpParser\Node\Stmt\Property as PropertyNode;
-use PhpParser\Node\Stmt\TraitUse as TraitUseNode;
 use PhpParser\Node\Stmt\Trait_ as TraitNode;
+use PhpParser\Node\Stmt\TraitUse as TraitUseNode;
 use PhpParser\Node\Stmt\Use_ as UseNode;
-use PhpParser\Node\NullableType;
+use PhpParser\NodeVisitorAbstract;
 use Sami\Project;
 use Sami\Reflection\ClassReflection;
 use Sami\Reflection\ConstantReflection;
@@ -61,6 +62,18 @@ class NodeVisitor extends NodeVisitorAbstract
             $this->addMethod($node);
         } elseif ($this->context->getClass() && $node instanceof ClassConstNode) {
             $this->addConstant($node);
+        } elseif ($node instanceof FunctionNode) {
+            // todo broken
+            $classRef = $this->context->getClass();
+            if ($classRef == null) {
+                $this->context->enterNamespace('');
+                $classNode = new ClassNode($this->context->getFile());
+                $classNode->namespacedName = '';
+                $classRef = $this->addClassOrInterface($classNode);
+                $classRef->setProject(Project::getInstance());
+            }
+            $this->context->enterClass($classRef);
+            $this->addFunction($node);
         }
     }
 
@@ -239,6 +252,107 @@ class NodeVisitor extends NodeVisitorAbstract
 
         if ($this->context->getFilter()->acceptMethod($method)) {
             $this->context->getClass()->addMethod($method);
+
+            if ($errors) {
+                $this->context->addErrors((string)$method, $node->getLine(), $errors);
+            }
+        }
+    }
+
+    protected function addFunction(FunctionNode $node)
+    {
+        $method = new MethodReflection($node->name, $node->getLine());
+//        $method->setModifiers($node->flags);
+        $method->setByRef((string)$node->byRef);
+
+        foreach ($node->params as $param) {
+            $parameter = new ParameterReflection($param->name, $param->getLine());
+            $parameter->setModifiers($param->type);
+            $parameter->setByRef($param->byRef);
+            if ($param->default) {
+                $parameter->setDefault($this->context->getPrettyPrinter()->prettyPrintExpr($param->default));
+            }
+
+            $parameter->setVariadic($param->variadic);
+
+            $type = $param->type;
+            $typeStr = null;
+
+            if (is_string($param->type)) {
+                $type = $param->type;
+                $typeStr = (string)$param->type;
+            } elseif ($param->type instanceof NullableType) {
+                $type = $param->type->type;
+                $typeStr = (string)$param->type->type;
+            } elseif (null !== $param->type) {
+                $typeStr = (string)$param->type;
+            }
+
+            if ($type instanceof FullyQualified && 0 !== strpos($typeStr, '\\')) {
+                $typeStr = '\\' . $typeStr;
+            }
+
+            if (null !== $typeStr) {
+                $typeArr = array(array($typeStr, false));
+
+                if ($param->type instanceof NullableType) {
+                    $typeArr[] = array('null', false);
+                }
+
+                $parameter->setHint($this->resolveHint($typeArr));
+            }
+
+            $method->addParameter($parameter);
+        }
+
+        $comment = $this->context->getDocBlockParser()->parse($node->getDocComment(), $this->context, $method);
+        $method->setDocComment($node->getDocComment());
+        $method->setShortDesc($comment->getShortDesc());
+        $method->setLongDesc($comment->getLongDesc());
+        $method->setSee($this->resolveSee($comment->getTag('see')));
+        if (!$errors = $comment->getErrors()) {
+            $errors = $this->updateMethodParametersFromTags($method, $comment->getTag('param'));
+
+            if ($tag = $comment->getTag('return')) {
+                $method->setHint($this->resolveHint($tag[0][0]));
+                $method->setHintDesc($tag[0][1]);
+            }
+
+            $method->setExceptions($comment->getTag('throws'));
+            $method->setTags($comment->getOtherTags());
+        }
+
+        $method->setErrors($errors);
+
+        $returnType = $node->getReturnType();
+        $returnTypeStr = null;
+
+        if (is_string($returnType)) {
+            $returnTypeStr = (string)$returnType;
+        } elseif ($returnType instanceof NullableType) {
+            $returnTypeStr = (string)$returnType->type;
+        } elseif (null !== $returnType) {
+            $returnTypeStr = (string)$returnType;
+        }
+
+        if ($returnType instanceof FullyQualified && 0 !== strpos($returnTypeStr, '\\')) {
+            $returnTypeStr = '\\' . $returnTypeStr;
+        }
+
+        if (null !== $returnTypeStr) {
+            $returnTypeArr = array(array($returnTypeStr, false));
+
+            if ($returnType instanceof NullableType) {
+                $returnTypeArr[] = array('null', false);
+            }
+
+            $method->setHint($this->resolveHint($returnTypeArr));
+        }
+
+        if ($this->context->getFilter()->acceptMethod($method)) {
+            $this->context->getClass()->addMethod($method);
+//            var_dump($this->context->getNamespace()->getProject());
+            var_dump($this->context->getClass()->getProject()->getNamespaces());
 
             if ($errors) {
                 $this->context->addErrors((string) $method, $node->getLine(), $errors);

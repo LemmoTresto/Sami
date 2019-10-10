@@ -3,7 +3,8 @@
 
 namespace Sami\RemoteRepository;
 
-class AzureDevOpsRepository extends AbstractRemoteRepository
+
+class AzureDevOpsRemoteRepository extends AbstractRemoteRepository
 {
     protected $organisation;
 
@@ -13,7 +14,7 @@ class AzureDevOpsRepository extends AbstractRemoteRepository
         parent::__construct($name, $localPath);
     }
 
-    public function getFileUrl(string $projectVersion, string $relativePath, int $line): string
+    public function getFileUrl(string $projectVersion, string $relativePath, ?int $line): string
     {
         $arr = explode('/', $this->name);
         $url = 'https://dev.azure.com/' . $this->organisation . '/' . $arr[0] . '/_git/' . $arr[1] . '?path=' . substr($relativePath, strlen($arr[0]) - 1) . '&version=GB' . $projectVersion;

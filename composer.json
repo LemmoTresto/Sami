@@ -23,7 +23,8 @@
         "symfony/yaml": "~3.0|~4.0",
         "symfony/process": "~3.0|~4.0",
         "phpdocumentor/reflection-docblock": "~2.0",
-        "blackfire/php-sdk": "^1.5.18"
+      "blackfire/php-sdk": "^1.5.18",
+      "ext-json": "*"
     },
     "require-dev": {
         "symfony/phpunit-bridge": "~4.0"
