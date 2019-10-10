@@ -13,7 +13,7 @@ namespace Sami\RemoteRepository;
 
 class BitBucketRemoteRepository extends AbstractRemoteRepository
 {
-    public function getFileUrl($projectVersion, $relativePath, $line)
+    public function getFileUrl(string $projectVersion, string $relativePath, int $line): string
     {
         $url = 'https://bitbucket.org/'.$this->name.'/src/'.str_replace('\\', '/', $projectVersion.$relativePath);
 

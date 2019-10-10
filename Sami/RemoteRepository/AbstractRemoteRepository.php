@@ -16,15 +16,15 @@ abstract class AbstractRemoteRepository
     protected $name;
     protected $localPath;
 
-    public function __construct($name, $localPath)
+    public function __construct(string $name, string $localPath)
     {
         $this->name = $name;
         $this->localPath = $localPath;
     }
 
-    abstract public function getFileUrl($projectVersion, $relativePath, $line);
+    abstract public function getFileUrl(string $projectVersion, string $relativePath, int $line): string;
 
-    public function getRelativePath($file)
+    public function getRelativePath($file): string
     {
         $replacementCount = 0;
         $filePath = str_replace($this->localPath, '', $file, $replacementCount);
