@@ -1,5 +1,5 @@
 {
-    "name": "sami/sami",
+    "name": "lemmotresto/sami",
     "type": "application",
     "description": "Sami, an API documentation generator",
     "keywords": ["phpdoc"],
